@@ -1,0 +1,12 @@
+{application, airconditioner, [
+    {description, "An AtomVM application for controlling a window air conditioner."},
+    {vsn, "1.0.0"},
+    {registered, []},
+    {applications, [
+        kernel, stdlib
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["GPL v3"]},
+    {links, []}
+]}.

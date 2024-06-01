@@ -1,0 +1,43 @@
+%%
+%% Copyright (c) 2024 RuhNet
+%% All rights reserved.
+%%
+%% Licensed under the GPL v3.
+%%
+
+-module(config).
+
+-include("app.hrl").
+
+%WIFI Details
+-define(WLAN_SSID, "MyNetworkSSID").
+-define(WLAN_PSK, "WifiPsswrd").
+-define(WLAN_AP_SSID, "RuhNetAirConditioner").
+-define(WLAN_AP_PSK, "WiFi_AP_Password").
+
+%MQTT Server Credentials
+-define(MQTT_SERVER, "mqtt.lan").
+-define(MQTT_PORT, "1883").
+-define(MQTT_USERNAME, "ruhnet_ac1").
+-define(MQTT_PASSWORD, "Pa$$w0Rd").
+
+-export([get/0]).
+
+get() ->
+    #{  mqtt => #{
+            url => "mqtt://" ++ ?MQTT_USERNAME ++ ":" ++ ?MQTT_PASSWORD ++ "@" ++ ?MQTT_SERVER ++ ":" ++ ?MQTT_PORT,
+            username => ?MQTT_USERNAME,
+            password => ?MQTT_PASSWORD
+        },
+        sta => [
+            {dhcp_hostname, ?DEVICENAME},
+            {ssid, ?WLAN_SSID},
+            {psk, ?WLAN_PSK}
+        ],
+        ap => [
+            {ssid, ?WLAN_AP_SSID},
+            {psk, ?WLAN_AP_PSK},
+            {ssid_hidden, false},
+            {max_connections, 4}
+        ]
+    }.
