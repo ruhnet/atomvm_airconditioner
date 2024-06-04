@@ -38,7 +38,7 @@ Example 2:
 
 The thermostat temperature and span can be saved into NVS (non volatile storage) by sending it a `save` command.
 
-In addition to using the built-in thermistor as the source for the temperature to compare with the thermostat setting, you can set a remote MQTT topic to subscribe to for temperature readings. I have a small ESP8266 temp sensor that publishes readings to MQTT, so I can place it in an adjoining room and the AC will keep the temperature regulated in the other room adjacent to where the unit actually is. Send `temp_source {TOPIC}` on the main control channel to set a remote temperature feed. This setting is saved in NVS. To revert back to the internal thermistor measurement, send `temp_source local`.
+In addition to using the built-in thermistor as the source for the temperature to compare with the thermostat setting, you can set a remote MQTT topic to subscribe to for temperature readings. I have a small ESP8266 temp sensor that publishes readings to MQTT, so I can place it in an adjoining room and the AC will keep the temperature regulated in the other room adjacent to where the unit actually is. Send `temp_source {MQTT_TOPIC}` on the main control channel to set a remote temperature feed. This setting is saved in NVS. To revert back to the internal thermistor measurement, send `temp_source local`.
 
 You can also set timers for actions to be executed after a delay: publishing `timer cool 2h` on the main control topic turns the unit on cool mode in 2 hours from now; publishing `timer 69 15m` on the thermostat topic will set the thermostat to 69 degrees (F) in 15 minutes.
 
@@ -56,3 +56,5 @@ On my particular unit I left the I2C pins [default 21,22] unused, in case I late
 - HTTP server that allows setting mode/thermostat/etc. without MQTT.
 - Button reading input for changing mode/thermostat.
 - LCD Display
+- Celsius temperature support
+- Better equation for calculating accurate temperature from the thermistors
