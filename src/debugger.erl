@@ -23,6 +23,9 @@ init(DebugStatus) ->
     %erlang:send_after(60000, self(), time),
     {ok, {DebugStatus, erlang:universaltime()}}. %set state of default debug status and bootup time
 
+handle_call(get, _From, State={DebugType, _}) ->
+    %io:format("GETTING DEBUG TYPE~n"),
+    {reply, DebugType, State};
 handle_call(enable, _From, _State={_, BootTime}) ->
     {reply, ok, {true, BootTime}};
 handle_call(disable, _From, _State={_, BootTime}) ->
@@ -41,7 +44,9 @@ handle_call(Call, _From, State) ->
 
 handle_cast(Msg, State={DebugType, _}) ->
     select_output(DebugType, Msg),
+%    erlang:display(Call),
     {noreply, State}.
+
 
 %handle_info(time, State) ->
 %    {{Year, Month, Day}, {Hour, Minute, Second}} = erlang:universaltime(),
@@ -65,12 +70,14 @@ select_output(Mode, Msg) ->
     case Mode of
         console_only ->
             %io:format("[DEBUG]: ~p~n", [Msg]);
-            io:format(Msg);
+            io:format(Msg),
+            io:format("\n");
         mqtt_only ->
             notify(?TOPIC_DEBUG, Msg);
         true ->
             %io:format("[DEBUG]: ~p~n", [Msg]),
             io:format(Msg),
+            io:format("\n"),
             notify(?TOPIC_DEBUG, Msg);
         false -> ok
     end.
@@ -78,7 +85,7 @@ select_output(Mode, Msg) ->
 notify(Topic, Msg) ->
     case whereis(mqtt_client) of
         undefined -> io:format("[DEBUG MQTT dead] MSG:~p", [Msg]);
-        _Pid -> mqtt:publish_and_forget(Topic, Msg) % this notify/2 is called from handle_call/handle_info, so need to return quickly.
+        _Pid -> spawn(mqtt:publish_and_forget(Topic, Msg))
     end.
 
 enable() ->
@@ -95,13 +102,16 @@ console_only() ->
 
 log(Msg) ->
     gen_server:cast(?MODULE, Msg).
+%    DebugType = gen_server:call(?MODULE, get),
+%    select_output(DebugType, Msg).
 
 format(Msg) ->
     log(Msg).
 
 format(FmtMsg, FmtArgs) ->
     Msg = io_lib:format(FmtMsg, FmtArgs),
-    gen_server:cast(?MODULE, Msg).
+    %gen_server:cast(?MODULE, Msg).
+    log(Msg).
 
 uptime() ->
     erlang:send(?MODULE, uptime).

@@ -31,8 +31,8 @@ start_mqtt_client() ->
     MQTTConfig = #{
         url => maps:get(url, Config),
         client_id => ?DEVICENAME,
-        disconnected_handler => fun(_MQTT_CLIENT_PID) -> io:format("yoyo disconnected from mqtt!!!!!!~n"), mqtt_client:reconnect(whereis(mqtt_client)) end,
-        error_handler => fun(_MQTT_CLIENT_PID, Err) -> io:format("dah mqtt error_handler: ~p~n", [Err]) end,
+        disconnected_handler => fun(_MQTT_CLIENT_PID) -> io:format("DISCONNECTED from MQTT!!!!!!~n"), mqtt_client:reconnect(whereis(mqtt_client)) end,
+        error_handler => fun(_MQTT_CLIENT_PID, Err) -> io:format("[~p:~p] ~p~n", [?MODULE, ?FUNCTION_NAME, Err]) end,
         connected_handler => fun handle_connected/1
     },
     io:format("Starting 'mqtt_client'...~n"),
@@ -117,7 +117,9 @@ handle_connected(MQTT) ->
     Config = mqtt_client:get_config(MQTT),
     debugger:format("[~p:~p] MQTT started and connected to ~p~n", [?MODULE, ?FUNCTION_NAME, maps:get(url, Config)]),
     gen_server:call(mqtt, {ready, MQTT}),
-    subscribe_to_topic_list(MQTT, get_topics()).
+    subscribe_to_topic_list(MQTT, get_topics()),
+    publish_message(?TOPIC_DEBUG, util:uptime()),
+    publish_message(?TOPIC_DEBUG, io_lib:format("[~p] '~p' running on [~p] started and connected!", [?MODULE, ?APPNAME, ?DEVICENAME])).
 
 subscribe_to_topic(MQTT, Topic, SubHandleFunc, DataHandleFunc) ->
     debugger:format("Subscribing to ~p...~n", [Topic]),
@@ -180,10 +182,14 @@ handle_data(_MQTT, Topic, Data) ->
         <<"flash2">> -> spawn(fun() -> led:flash(?STATUS_LED2, 300, 10) end);
         <<"flash 10">> -> spawn(fun() -> led:flash(?STATUS_LED, 200, 10) end);
         <<"flash forever">> -> spawn(fun() -> led:flash(?STATUS_LED, 200, forever) end);
-        <<"listproc">> -> gen_server:call(led, listproc);
-        <<"reset_led">> -> gen_server:call(led, reset);
+        %<<"listproc">> -> gen_server:call(led, listproc);
+        %<<"reset_led">> -> gen_server:call(led, reset);
         <<"beep">> -> spawn(fun() -> util:beep(440, 1000) end);
         <<"beep ", F/binary>> -> spawn(fun() -> util:beep(util:make_int(F), 1000) end);
+        %<<"beep_pwm">> -> spawn(fun() -> util:beep_pwm(1000, 400) end);
+        %<<"beep_pwm ", L:2/binary, " ", F/binary>> -> spawn(fun() -> io:format("FREQ: ~p, DURATION: ~p",[F, L]), util:beep_pwm(util:make_int(F), util:make_int(L) * 100) end);
+        %<<"beep_pwm ", F/binary>> -> spawn(fun() -> util:beep_pwm(util:make_int(F), 60) end);
+        %<<"beep_pwm_long ", F/binary>> -> spawn(fun() -> util:beep_pwm(util:make_int(F), 1000) end);
         %%%
         <<"ac_on">> -> ac_on();
         <<"all_off">> -> all_off();
@@ -192,11 +198,17 @@ handle_data(_MQTT, Topic, Data) ->
         %<<"coiltemp ", T/binary>> -> control:set_coil_templimit(util:make_int(T));
         %%%
         <<"sysinfo">> -> system_info:start();
-        <<"uptime">> -> publish_message(?TOPIC_DEBUG, util:uptime());
         <<"debug">> -> debugger:enable(); %crashes after a few minutes
         <<"nodebug">> -> debugger:disable();
         <<"debug_mqtt_only">> -> debugger:mqtt_only();
         <<"debug_console_only">> -> debugger:console_only();
+        <<"memory">> -> publish_message(?TOPIC_DEBUG, io_lib:format("Free memory: ~p. Min free: ~p", [
+                                            erlang:system_info(esp32_free_heap_size),
+                                            erlang:system_info(esp32_minimum_free_size)
+                                        ]));
+        <<"uptime">> -> publish_message(?TOPIC_DEBUG, util:uptime());
+        <<"reset">> -> all_off(), esp:restart();
+        <<"reboot">> -> all_off(), esp:restart();
         %%%
         <<"off">> -> control:set_mode(off);
         <<"on">> -> control:set_mode(cool);
@@ -208,49 +220,22 @@ handle_data(_MQTT, Topic, Data) ->
         <<"fan ", F/binary>> -> control:set_fan(util:make_int(F));
         <<"temp_source ", TempSrc/binary>> -> temperature:set_source(TempSrc);
         <<"safe">> -> control:set_safe();
-        <<"reset">> -> all_off(), esp:restart();
-        <<"reboot">> -> all_off(), esp:restart();
         %%% Timer
-        <<"timer_h off ", T/binary>> -> mode_timer(off, T*3600); %hours timer
-        <<"timer_m off ", T/binary>> -> mode_timer(off, T*60); %minutes timer
-        <<"timer_s off ", T/binary>> -> mode_timer(off, T); %seconds timer
-        <<"timer off ", T/binary>> -> mode_timer(off, T);   %default seconds timer
-        <<"timer_h cool ", T/binary>> -> mode_timer(cool, T*3600); %hours timer
-        <<"timer_m cool ", T/binary>> -> mode_timer(cool, T*60); %minutes timer
-        <<"timer_s cool ", T/binary>> -> mode_timer(cool, T); %seconds timer
-        <<"timer cool ", T/binary>> -> mode_timer(cool, T);   %default seconds timer
-        <<"timer_h on ", T/binary>> -> mode_timer(cool, T*3600); %hours timer
-        <<"timer_m on ", T/binary>> -> mode_timer(cool, T*60); %minutes timer
-        <<"timer_s on ", T/binary>> -> mode_timer(cool, T); %seconds timer
-        <<"timer on ", T/binary>> -> mode_timer(cool, T);   %default seconds timer
-        <<"timer_h energy_saver ", T/binary>> -> mode_timer(cool, T*3600); %hours timer
-        <<"timer_m energy_saver ", T/binary>> -> mode_timer(cool, T*60); %minutes timer
-        <<"timer_s energy_saver ", T/binary>> -> mode_timer(cool, T); %seconds timer
-        <<"timer energy_saver ", T/binary>> -> mode_timer(cool, T);   %default seconds timer
-        <<"timer_h fan_only ", T/binary>> -> mode_timer(fan_only, T*3600); %hours timer
-        <<"timer_m fan_only ", T/binary>> -> mode_timer(fan_only, T*60); %minutes timer
-        <<"timer_s fan_only ", T/binary>> -> mode_timer(fan_only, T); %seconds timer
-        <<"timer fan_only ", T/binary>> -> mode_timer(fan_only, T);   %default seconds timer
-%        <<"timer_h ", Mode/binary, " ", T/binary>> -> %hours timer
-%            TimeMs = util:make_int(T) * 3600 * 1000,
-%            erlang:send_after(TimeMs, control, {set_mode, Mode});
-%        <<"timer_m ", Mode/binary, " ", T/binary>> -> %minutes timer
-%            TimeMs = util:make_int(T) * 60 * 1000,
-%            erlang:send_after(TimeMs, control, {set_mode, Mode});
-%        <<"timer_s ", Mode/binary, " ", T/binary>> -> %seconds timer
-%            TimeMs = util:make_int(T) * 1000,
-%            erlang:send_after(TimeMs, control, {set_mode, Mode});
-%        <<"timer ", Mode/binary, " ", T/binary>> -> %default seconds timer
-%            TimeMs = util:make_int(T) * 1000,
-%            erlang:send_after(TimeMs, control, {set_mode, Mode});
-            %TimeMs = case binary:last(T) of
-            %    104 ->  %h
-            %    72 ->  %H
-            %    109 ->  %m
-            %    77 ->  %M
-            %    115 ->  %s
-            %    83 ->  %S
-            %end,
+        <<"timer off ", T/binary>> -> util:timer(mode, off, T);
+        <<"timer on ", T/binary>> -> util:timer(mode, cool, T);
+        <<"timer cool ", T/binary>> -> util:timer(mode, cool, T);
+        <<"timer energy_saver ", T/binary>> -> util:timer(mode, energy_saver, T);
+        <<"timer fan_only ", T/binary>> -> util:timer(mode, fan_only, T);
+        <<"timer ", Mode1:1/binary, " ", T/binary>> ->
+            Mode = case Mode1 of
+                <<"o">> -> off;
+                <<"0">> -> off;
+                <<"1">> -> cool;
+                <<"c">> -> cool;
+                <<"e">> -> energy_saver;
+                <<"f">> -> fan_only
+            end,
+            util:timer(mode, Mode, T);
         %%%
         _ -> util:set_output(?STATUS_LED, Data)
     end.
@@ -271,33 +256,11 @@ handle_data_thermostat(_MQTT, Topic, Data) ->
         <<"load">> -> thermostat:load();
         <<"default">> -> thermostat:default();
         %%% Timer
-        <<"timer_h ", Temp:2/binary, " ", T/binary>> -> thermostat_timer(Temp, util:make_int(T) * 3600); %hours timer
-        <<"timer_m ", Temp:2/binary, " ", T/binary>> -> thermostat_timer(Temp, util:make_int(T) * 60); %minutes timer
-        <<"timer_s ", Temp:2/binary, " ", T/binary>> -> thermostat_timer(Temp, util:make_int(T)); %seconds timer
-        <<"timer ", Temp:2/binary, " ", T/binary>> -> thermostat_timer(Temp, util:make_int(T)); %seconds timer
+        <<"timer ", Temp:2/binary, " ", T/binary>> -> util:timer(temp, Temp, T); %seconds timer
         %%%
         _ -> thermostat:set_temp(Data),
              publish_message(?TOPIC_THERMOSTAT_SET, Data)
     end.
-
-mode_timer(Mode, TimeSec) ->
-    T = util:make_int(TimeSec),
-    spawn(fun() ->
-        debugger:format("Setting mode to ~p via timer for ~p seconds from now...~n", [Mode, T]),
-        erlang:send_after(T * 1000, control, {set_mode, Mode}),
-        debugger:format("Changing mode to ~p via timer after ~p seconds!~n", [Mode, T])
-    end).
-
-
-thermostat_timer(Temp, TimeSec) ->
-    T = util:make_int(TimeSec),
-    spawn(fun() ->
-        debugger:format("Setting thermostat ~p timer for ~p seconds from now...~n", [Temp, T]),
-        erlang:send_after(T * 1000, thermostat, {set_temp, util:make_int(Temp)}),
-        debugger:format("Set thermostat to ~p with timer after ~p seconds!~n", [Temp, T])
-    end).
-
-
 
 handle_data_fan(_MQTT, Topic, Data) ->
     debugger:format("[~p:~p/~p] received data on topic ~p: ~p ~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, Topic, Data]),
@@ -309,17 +272,22 @@ handle_data_fan(_MQTT, Topic, Data) ->
         F -> control:set_fan(util:make_int(F))
     end.
 
-%handle_data_output(_MQTT, Topic = <<"barf/out", X/binary>>, Data) ->
 handle_data_output(_MQTT, Topic, Data) ->
     debugger:format("~p/~p received data on topic ~p: ~p ~n", [?FUNCTION_NAME, ?FUNCTION_ARITY, Topic, Data]),
     %binary:last gives the last byte of a binary as an integer (ASCII value in this case). Subtract 48 to get the output number. :)
     Output = binary:last(Topic)-48,
+    %OutputBin = list_to_binary([Output+48]),
     Pin = lists:nth(Output, ?GENERIC_OUTPUTS), %select the output pin from the ?GENERIC_OUTPUTS define list.
     SetOutFunc = case ?GENERIC_OUTPUT_ACTIVE_LOW of
                      true -> fun util:set_output_activelow/2;
                      _ -> fun util:set_output/2
                  end,
-    SetOutFunc(Pin, Data).
+    case Data of
+        <<"timer off ", T/binary>> -> util:timer({SetOutFunc, [Pin, off]}, nil, T); % <<timer off 15m">>
+        <<"timer on ", T/binary>> -> util:timer({SetOutFunc, [Pin, on]}, nil, T); % <<"timer on 15m">>
+        <<"timer ", Val:1/binary, " ", T/binary>> -> util:timer({SetOutFunc, [Pin, util:make_int(Val)]}, nil, T); % <<"timer 1 15m">>
+        _ -> SetOutFunc(Pin, Data)
+    end.
 
 publish_thermostat_loop(Interval) ->
     [{temp, Therm}|_] = thermostat:get_thermostat(),

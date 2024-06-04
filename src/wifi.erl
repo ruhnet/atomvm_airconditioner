@@ -75,6 +75,7 @@ disconnected() ->
 sntp_synchronized({TVSec, TVUsec}) ->
     debugger:format("Synchronized time with SNTP server. TVSec=~p TVUsec=~p~n", [TVSec, TVUsec]),
     util:print_time(),
-    debugger:format("Updating system boot time..."),
-    debugger:set_boot_time().
+    debugger:format("Updating system boot time...~n"),
+    debugger:set_boot_time(),
+    mqtt:publish_and_forget(?TOPIC_DEBUG, util:uptime()).
 

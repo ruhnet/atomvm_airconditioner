@@ -33,20 +33,22 @@ init([]) ->
     util:beep(180, 100),
     util:beep(440, 200),
     util:beep(180, 50),
+    %ok = ledc_pwm:start(),
+
     MaxRestarts = 5, % Kill everyone and die if more than MaxRestarts failures per MaxSecBetweenRestarts seconds
     MaxSecBetweenRestarts = 10,
-%    Worker1 = {led, {led, start_link, []}, permanent, 2000, worker, [led]},
+    %Worker = {led, {led, start_link, []}, permanent, 2000, worker, [led]},
     Debugger = worker(debugger, start_link, []),
-    LedControl = worker(led, start_link, []),
     Thermostat = worker(thermostat, start_link, []),
     TempReader = worker(temperature, start_link, []),
-    ButtonWatcher = worker(button_watcher, start_link, []),
     MainControl = worker(control, start_link, []),
     NetworkSup = supervisor(network_sup, []),
+    %LedControl = worker(led, start_link, []),
+    %ButtonWatcher = worker(button_watcher, start_link, []),
 
     {ok, {{one_for_one, MaxRestarts, MaxSecBetweenRestarts}, [
                                                               Debugger
-                                                              ,LedControl
+                                                              %,LedControl
                                                               ,TempReader
                                                               ,Thermostat
                                                               ,MainControl

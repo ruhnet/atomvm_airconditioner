@@ -11,7 +11,7 @@
 -behavior(gen_server).
 
 -export([start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
--export([set_mode/1, cycle_mode/0, set_fan/1, cycle_fan/0, set_safe/0, all_off/0 ]). %, load/0, save/0]).
+-export([set_mode/1, cycle_mode/0, set_fan/1, cycle_fan/0, set_safe/0, all_off/0, validate_mode/1 ]). %, load/0, save/0]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% @doc This module is the master control for the air conditioner.
@@ -75,7 +75,7 @@ handle_cast(_Msg, State) ->
 %%% MODE SELECTION  off|cool|energy_saver|fan_only
 handle_call({set_mode, Mode}, _From, _State=[{mode, M}, {fan, F}, {compressor, C}, {compressor_safe, CS}]) ->
     erlang:send(?MODULE, {set_mode, Mode}),
-    {reply, ok, [{mode, Mode}, {fan, F}, {compressor, C}, {compressor_safe, CS}] };
+    {reply, ok, [{mode, M}, {fan, F}, {compressor, C}, {compressor_safe, CS}] };
 
 %%% FAN SELECTION 1|2|3
 handle_call({set_fan, FanNew}, _From, _State=[{mode, Mode}, {fan, F}, {compressor, C}, {compressor_safe, CS}]) ->
@@ -127,8 +127,10 @@ handle_info({set_mode, Mode}, _State=[{mode, M}, {fan, F}, {compressor, C}, {com
     end,
     State = [{mode, Mode}, {fan, F}, {compressor, Comp}, {compressor_safe, CSafe}],
     notify(?TOPIC_STATUS, status_binary(State, "mode_changed")),
-    spawn(fun() -> util:beep(440, 100) end),
-    spawn(fun() -> led:flash(?STATUS_LED, 100, 4) end),
+    %spawn(fun() -> util:beep(440, 200) end),
+    %spawn(fun() -> led:flash(?STATUS_LED, 100, 4) end),
+    %spawn(?MODULE, modechange_feedback, [Mode]),
+    modechange_feedback(Mode),
     {noreply, State};
 
 %%% FAN SELECTION 1|2|3
@@ -139,8 +141,11 @@ handle_info({set_fan, FanNew}, _State=[{mode, Mode}, {fan, FanPrev}, {compressor
                 FanPrev;
             _NewFan ->
                 spawn(fun() ->
-                    timer:sleep(1000), %no reason for this other than to seem neat :)
-                    fan(FanNew)
+                    timer:sleep(800), %no reason for this other than to seem neat :)
+                    case Mode of
+                        off -> FanNew; %don't actually turn fan on, since mode is off.
+                        _ -> fan(FanNew)
+                    end
                 end),
                 case FanNew of
                     3 -> 3;
@@ -244,20 +249,44 @@ handle_info(operation_loop, [{mode, Mode}, {fan, F}, {compressor, on}, {compress
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Convenience functions:
 %%%
+set_fan(Fan) ->
+    gen_server:call(?MODULE, {set_fan, Fan}).
+
+cycle_fan() ->
+    gen_server:cast(?MODULE, cycle_fan).
+
+cycle_mode() ->
+    gen_server:cast(?MODULE, cycle_mode).
+
 set_mode(Mode) -> % off|cool|energy_saver|fan_only
     case validate_mode(Mode) of
         invalid -> invalid_mode;
         ValidMode -> gen_server:call(?MODULE, {set_mode, ValidMode})
     end.
 
-set_status_led(Mode) ->
+validate_mode(Mode) ->
     case Mode of
-        off -> util:set_output(?STATUS_LED, off);
-        on -> util:set_output(?STATUS_LED, on);
-        cool -> util:set_output(?STATUS_LED, on);
-        energy_saver -> util:set_output(?STATUS_LED, on);
-        fan_only -> util:set_output(?STATUS_LED, on);
-        _ -> util:set_output(?STATUS_LED, off)
+        off -> off;
+        "off" -> off;
+        "OFF" -> off;
+        <<"off">> -> off;
+        cool -> cool;
+        "cool" -> cool;
+        "COOL" -> cool;
+        <<"cool">> -> cool;
+        energy_saver -> energy_saver;
+        "energy_saver" -> energy_saver;
+        "ENERGY_SAVER" -> energy_saver;
+        <<"energy_saver">> -> energy_saver;
+        fan_only -> fan_only;
+        "fan_only" -> fan_only;
+        "FAN_ONLY" -> fan_only;
+        <<"fan_only">> -> fan_only;
+        fan -> fan_only;
+        "fan" -> fan_only;
+        "FAN" -> fan_only;
+        <<"fan">> -> fan_only;
+        _ -> invalid
     end.
 
 %set_mode(Mode) -> % off|cool|energy_saver|fan_only
@@ -266,38 +295,18 @@ set_status_led(Mode) ->
 %        _ -> invalid_mode
 %    end.
 
-validate_mode(Mode) ->
-    case Mode of
-        off -> off;
-        "off" -> off;
-        "OFF" -> off;
-        cool -> cool;
-        "cool" -> cool;
-        "COOL" -> cool;
-        energy_saver -> energy_saver;
-        "energy_saver" -> energy_saver;
-        "ENERGY_SAVER" -> energy_saver;
-        fan_only -> fan_only;
-        "fan_only" -> fan_only;
-        "FAN_ONLY" -> fan_only;
-        fan -> fan_only;
-        "fan" -> fan_only;
-        "FAN" -> fan_only;
-        _ -> invalid
-    end.
+%mode_valid(Mode) ->
+%    case Mode of
+%        off -> true;
+%        cool -> true;
+%        energy_saver -> true;
+%        fan_only -> true;
+%        _ -> false
+%    end.
 
-
-mode_valid(Mode) ->
-    case Mode of
-        off -> true;
-        cool -> true;
-        energy_saver -> true;
-        fan_only -> true;
-        _ -> false
-    end.
-
-set_fan(Fan) ->
-    gen_server:call(?MODULE, {set_fan, Fan}).
+modechange_feedback(Mode) ->
+    spawn(fun() -> util:beep(440, 200) end),
+    led:set_status_led(Mode).
 
 set_safe() ->
     util:beep(1000, 200),
@@ -344,12 +353,6 @@ compressor_set_outputs(C) ->
     util:set_output(?COMPRESSOR_LED, C),
     C.
 
-cycle_mode() ->
-    gen_server:cast(?MODULE, cycle_mode).
-
-cycle_fan() ->
-    gen_server:cast(?MODULE, cycle_fan).
-
 fan_on(F) ->
     case F of
         0 -> fan(3);
@@ -367,16 +370,19 @@ fan(F) ->
         1 ->
             util:set_output(?FAN2, off), %turn off the ones that may be on before turning on the one required
             util:set_output(?FAN3, off),
+            timer:sleep(200),
             util:set_output(?FAN1, on),
             1;
         2 ->
             util:set_output(?FAN1, off),
             util:set_output(?FAN3, off),
+            timer:sleep(200),
             util:set_output(?FAN2, on),
             2;
         3 ->
             util:set_output(?FAN1, off),
             util:set_output(?FAN2, off),
+            timer:sleep(200),
             util:set_output(?FAN3, on),
             3;
         _ -> 0
@@ -391,7 +397,6 @@ notify(Topic, Msg) ->
 
 status_binary(State) ->
     status_binary(State, "ok").
-
 status_binary([{mode, Mode}, {fan, Fan}, {compressor, Comp}, {compressor_safe, CS}], StatusMsg) ->
     [{temp, TStat}, {span, Span}] = thermostat:get_thermostat(),
     [{temp, _}, {coiltemp, CoilTemp}, {templocal, TempLocal}, {tempremote, TempRemote}, {tempsrc, TempSrc}] = temperature:get_temperature(),
@@ -412,12 +417,12 @@ status_binary([{mode, Mode}, {fan, Fan}, {compressor, Comp}, {compressor_safe, C
    ,"\"mode\":\"", BMode/binary, "\","
    ,"\"fan\":", BFan/binary, ","
    ,"\"compressor\":\"", BComp/binary, "\","
+   ,"\"thermostat\":", BTStat/binary, ","
    ,"\"temp_local\":", BTempLocal/binary, ","
    ,"\"temp_remote\":", BTempRemote/binary, ","
-   ,"\"thermostat\":", BTStat/binary, ","
+   ,"\"coil\":", BCoilTemp/binary, ","
    ,"\"tempsource\":\"", BTempSrc/binary, "\","
    ,"\"span\":", BSpan/binary, ","
-   ,"\"coil\":", BCoilTemp/binary, ","
    ,"\"comp_safe\":\"", BCS/binary, "\","
    ,"\"time\":\"", BTime/binary, "\","
    ,"\"status\":\"", BStatusMsg/binary, "\""

@@ -15,7 +15,7 @@
 %PINS/PORTS/PERIPHERALS
 -define(COMPRESSOR_LED, 2).    %
 -define(STATUS_LED, 0).        %
--define(STATUS_LED2, 15).      %
+-define(STATUS_LED2, 33).      %
 -define(COMPRESSOR, 4).        %
 -define(BEEPER, 5).            %VSPI
 -define(FAN1, 25).             %
@@ -40,7 +40,7 @@
 -define(SPI_CS, 15).           %HSPI
 
 
--define(GENERIC_OUTPUT_ACTIVE_LOW, true).
+-define(GENERIC_OUTPUT_ACTIVE_LOW, false).
 -define(GENERIC_OUTPUTS, [?OUT1]).
 
 -define(OUTPUT_PINS, [
@@ -66,7 +66,7 @@
 
 %-define(MEASUREINTERVAL, 2000).
 -define(SAFETY_DELAY, 360000).
--define(COIL_TEMP_LIMIT, 42).
+-define(COIL_TEMP_LIMIT, 44).
 -define(THERMOSTAT_DEFAULT, <<"67">>). %BINARY integer only, not float or integer
 -define(THERMOSTAT_SPAN_DEFAULT, <<"4.0">>). %BINARY FLOAT ONLY
 -define(MIN_THERMOSTAT, 55).

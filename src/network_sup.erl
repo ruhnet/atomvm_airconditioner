@@ -19,7 +19,7 @@ start_link() ->
 init([]) ->
     io:format("Starting ~p supervisor with ~p/~p...~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     MaxRestarts = 3, % Kill everyone and die if more than MaxRestarts failures per MaxSecBetweenRestarts seconds
-    MaxSecBetweenRestarts = 10,
+    MaxSecBetweenRestarts = 60,
     WiFi = worker(wifi, start_link, []),
     MQTT_Controller = worker(mqtt, start_link, []),
     %MQTTClient = worker(mqtt_client, start_link, []),
