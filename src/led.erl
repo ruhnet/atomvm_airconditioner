@@ -15,12 +15,12 @@
 %-export([start_link/0, init/1, handle_call/3, handle_cast/2, terminate/2]).
 %
 %start_link() ->
-%    io:format("Starting '~p' with ~p/~p...~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
+%    io:format("Starting '~p' with ~p/~p...", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
 %    {ok, _Pid} = gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 %    %timer:sleep(1).
 %
 %init(_) ->
-%    io:format("[~p:~p] Starting...~n", [?MODULE, ?FUNCTION_NAME]),
+%    io:format("[~p:~p] Starting...", [?MODULE, ?FUNCTION_NAME]),
 %    flash_led(?STATUS_LED, 50, 20),
 %    util:set_output(?STATUS_LED, on),
 %    {ok, []}.
@@ -32,10 +32,10 @@
 %    %{reply, ok, [Pid|State]};
 %    {reply, ok, State};
 %handle_call(listproc, _From, State) ->
-%    io:format("Processes: ~p ~n", [State]),
+%    io:format("Processes: ~p ", [State]),
 %    {reply, ok, State};
 %handle_call(reset, _From, State) ->
-%    io:format("Processes: ~p ~n", [State]),
+%    io:format("Processes: ~p ", [State]),
 %    kill_flashers(State),
 %    {reply, ok, []};
 %handle_call(Call, _From, State) ->
@@ -69,11 +69,11 @@ flash(Pin) ->
     flash_led(Pin, 1000, forever).
 %    gen_server:call(?MODULE, {flash, Pin, 1000, forever}).
 flash(Pin, Interval) ->
-    io:format("Flashing Pin ~p FOREVER with interval ~p ms.~n", [Pin, Interval]),
+    debugger:format("Flashing Pin ~p FOREVER with interval ~p ms.", [Pin, Interval]),
     flash_led(Pin, Interval, forever).
 %    gen_server:call(?MODULE, {flash, Pin, Interval, forever}).
 flash(Pin, Interval, Times) ->
-    io:format("Flashing Pin ~p ~p times with interval ~p ms.~n", [Pin, Times, Interval]),
+    debugger:format("Flashing Pin ~p ~p times with interval ~p ms.", [Pin, Times, Interval]),
     flash_led(Pin, Interval, Times).
 %    gen_server:call(?MODULE, {flash, Pin, Interval, Times}).
 

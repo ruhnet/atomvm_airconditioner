@@ -14,14 +14,14 @@
 -export([start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 
 start_link() ->
-    debugger:format("Starting ~p with ~p/~p...~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
+    debugger:format("Starting ~p with ~p/~p...", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     {ok, _Pid} = gen_server:start_link({local, ?MODULE}, ?MODULE, [?THERMOSTAT_DEFAULT, ?THERMOSTAT_SPAN_DEFAULT], []).
 
 init(Args = [DefTempBinInt, DefSpanBinFloat]) ->
-    debugger:format("~p:~p/~p called with args: ~p...~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, Args]),
+    debugger:format("~p:~p/~p called with args: ~p...", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, Args]),
     StartTemp = esp:nvs_get_binary(?NVS_NAMESPACE, thermostat, DefTempBinInt),
     SpanDegrees = esp:nvs_get_binary(?NVS_NAMESPACE, span, DefSpanBinFloat),
-    debugger:format("[~p:~p] Setting initial values. Temp: ~p Span: ~p~n", [?MODULE, ?FUNCTION_NAME, StartTemp, SpanDegrees]),
+    debugger:format("[~p:~p] Setting initial values. Temp: ~p Span: ~p", [?MODULE, ?FUNCTION_NAME, StartTemp, SpanDegrees]),
     {ok, [{temp, binary_to_integer(StartTemp)}, {span, binary_to_float(SpanDegrees)}]}.
 
 handle_info({set_temp, Temp}, State=[_T, Span]) ->
@@ -47,12 +47,12 @@ handle_call({load}, _From, _State=[_T, Span]) ->
     StoredTemp = esp:nvs_get_binary(?NVS_NAMESPACE, thermostat, ?THERMOSTAT_DEFAULT),
     {reply, ok, [{temp, binary_to_integer(StoredTemp)}, Span]};
 handle_call({save}, _From, State=[{temp, Temp}, {span, Span}]) ->
-    debugger:format("[~p:~p] Saving current thermostat value: ~p~n", [?MODULE, ?FUNCTION_NAME, Temp]),
+    debugger:format("[~p:~p] Saving current thermostat value: ~p", [?MODULE, ?FUNCTION_NAME, Temp]),
     esp:nvs_set_binary(?NVS_NAMESPACE, thermostat, integer_to_binary(Temp)),
     esp:nvs_set_binary(?NVS_NAMESPACE, span, float_to_binary(Span, [{decimals, 1}])),
     {reply, ok, State};
 handle_call({set_span, Span}, _From, [{temp, Temp}|_]) ->
-    debugger:format("[~p:~p] Setting new span value: ~p~n", [?MODULE, ?FUNCTION_NAME, Span]),
+    debugger:format("[~p:~p] Setting new span value: ~p", [?MODULE, ?FUNCTION_NAME, Span]),
     {reply, ok, [{temp, Temp}, {span, Span/1}]}; %divide by one forces float
 handle_call(get, _From, State) ->
     {reply, State, State};

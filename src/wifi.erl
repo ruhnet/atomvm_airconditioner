@@ -33,7 +33,7 @@ start_link() ->
     ],
     case network:start_link(Config) of
         {ok, _Pid} ->
-            debugger:format("Network started.~n"),
+            debugger:format("Network started."),
             {ok, _Pid};
             %timer:sleep(infinity);
         Error ->
@@ -41,41 +41,41 @@ start_link() ->
     end.
 
 ap_started() ->
-    debugger:format("AP started.~n").
+    debugger:format("AP started.").
 
 sta_connected(Mac) ->
-    debugger:format("WiFi AP: Station connected with mac ~p~n", [Mac]).
+    debugger:format("WiFi AP: Station connected with mac ~p", [Mac]).
 
 sta_disconnected(Mac) ->
-    debugger:format("WiFi AP: Station ~p disconnected~n", [Mac]).
+    debugger:format("WiFi AP: Station ~p disconnected.", [Mac]).
 
 sta_ip_assigned(Address) ->
-    debugger:format("WiFi AP: Station assigned address ~p~n", [Address]).
+    debugger:format("WiFi AP: Station assigned address ~p", [Address]).
 
 connected() ->
-    debugger:format("WiFi Client: connected.~n").
+    debugger:format("WiFi Client: connected.").
 
 got_ip(IpInfo) ->
-    debugger:format("WiFi Client: Using IP address: ~p.~n", [IpInfo]),
+    debugger:format("WiFi Client: Using IP address: ~p.", [IpInfo]),
 %    network_services_sup:start_link(). %We have an IP address, so start our network dependant services supervisor
     case whereis(mqtt) of
         undefined ->
-            debugger:format("MQTT CONTROLLER NOT RUNNING??~n");
+            debugger:format("MQTT CONTROLLER NOT RUNNING??");
         _Pid -> gen_server:call(mqtt, start_client)
     end,
     ok.
 
 disconnected() ->
-    debugger:format("WiFi Client: disconnected.~n"),
+    debugger:format("WiFi Client: disconnected."),
     timer:sleep(10000),
-    debugger:format("WiFi [not] killing myself because of disconnection...~n"),
+    debugger:format("WiFi [not] killing myself because of disconnection..."),
     timer:sleep(1).
     %exit(kill). %kill myself (supervisor will restart) FIXME: is this best way to handle this??
 
 sntp_synchronized({TVSec, TVUsec}) ->
-    debugger:format("Synchronized time with SNTP server. TVSec=~p TVUsec=~p~n", [TVSec, TVUsec]),
+    debugger:format("Synchronized time with SNTP server. TVSec=~p TVUsec=~p", [TVSec, TVUsec]),
     util:print_time(),
-    debugger:format("Updating system boot time...~n"),
+    debugger:format("Updating system boot time..."),
     debugger:set_boot_time(),
     mqtt:publish_and_forget(?TOPIC_DEBUG, util:uptime()).
 

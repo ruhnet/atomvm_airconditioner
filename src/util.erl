@@ -38,9 +38,9 @@ set_output_activelow(Pin, State) ->
     end.
 
 print_time() ->
-    %debugger:format("Printing Time with ~p...~n", [?FUNCTION_NAME]),
+    %debugger:format("Printing Time with ~p...", [?FUNCTION_NAME]),
     {{Year, Month, Day}, {Hour, Minute, Second}} = erlang:universaltime(),
-    debugger:format("Date: ~p/~2..0p/~2..0p ~2..0p:~2..0p:~2..0p (~pms)~n", [
+    debugger:format("Date: ~p/~2..0p/~2..0p ~2..0p:~2..0p:~2..0p (~pms)", [
         Year, Month, Day, Hour, Minute, Second, erlang:system_time(millisecond)
     ]),
     {{Year, Month, Day}, {Hour, Minute, Second}}.
@@ -69,13 +69,11 @@ uptime() ->
 %%% FUNCTION TIMER
 timer(Param, Val, Time) when is_binary(Time) ->
     {T, M} = parse_timer_time(Time),
-    io:format("PARSED TIME: ~p, ~p ", [T, M]),
     timer(Param, Val, T, M);
 timer(Param, Val, Time) ->
     timer(Param, Val, Time, s),
-    io:format("PARSED TIME 22222 where time is not binary: ~p, ~p ", [x, x]).
 timer(Param, Val, Time, Multiplier) ->
-    io:format("[~p:~p] processing timer...~n", [?MODULE, ?FUNCTION_NAME]),
+    io:format("[~p:~p] processing timer...", [?MODULE, ?FUNCTION_NAME]),
     T = make_int(Time),
     M = multiplier_from_specifier(Multiplier),
     MultP = parse_multiplier(Multiplier),
@@ -116,7 +114,7 @@ timer(Param, Val, Time, Multiplier) ->
 
 parse_timer_time(T) when is_integer(T) -> {T, s};
 parse_timer_time(T) when is_binary(T) ->
-    %io:format("[~p:~p] parsing timer time from binary...~n", [?MODULE, ?FUNCTION_NAME]),
+    %debugger:format("[~p:~p] parsing timer time from binary...", [?MODULE, ?FUNCTION_NAME]),
     S = byte_size(T),
     {Time, MultiplierSuffix} = case binary:last(T) of
         100 -> binary_split(T, S-1); %d = days
@@ -182,14 +180,14 @@ beep(Freq, DurationMs) ->
     beep(Freq, DurationMs - CyclePeriod). %not accurate length, but good enough
 
 %beep_pwm(Freq, Duration) ->
-%    io:format("beeping at freq ~p for duration ~p ms.~n", [Freq, Duration]),
+%    io:format("beeping at freq ~p for duration ~p ms.", [Freq, Duration]),
 %    Freq = Freq,
 %    {ok, Timer} = ledc_pwm:create_timer(Freq),
-%    io:format("Timer: ~p~n", [Timer]),
+%    io:format("Timer: ~p", [Timer]),
 %
 %    {ok, Beeper} = ledc_pwm:create_channel(Timer, ?BEEPER),
 %    %{ok, Beeper} = ledc_pwm:create_channel(Timer, 25),
-%    io:format("Channel1: ~p~n", [Beeper]),
+%    io:format("Channel1: ~p", [Beeper]),
 %
 %    %FadeupMs = make_int(Duration),
 %    FadeupMs = make_int(Duration/0.9),

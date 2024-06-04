@@ -17,7 +17,7 @@ start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 init([]) ->
-    io:format("Starting ~p supervisor with ~p/~p...~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
+    debugger:format("Starting ~p supervisor with ~p/~p...", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     MaxRestarts = 3, % Kill everyone and die if more than MaxRestarts failures per MaxSecBetweenRestarts seconds
     MaxSecBetweenRestarts = 60,
     WiFi = worker(wifi, start_link, []),

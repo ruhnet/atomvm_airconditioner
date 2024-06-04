@@ -26,11 +26,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 start_link() ->
-    debugger:format("Starting '~p' with ~p/~p...~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
+    debugger:format("Starting '~p' with ~p/~p...", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     {ok, _Pid} = gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init(_) ->
-    debugger:format("Starting '~p' with ~p/~p...~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
+    debugger:format("Starting '~p' with ~p/~p...", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     util:beep(880, 1000),
     %erlang:send_after(200, self(), start),
     erlang:send_after(200, ?MODULE, start),
@@ -41,7 +41,7 @@ terminate(_Reason, _State) ->
     ok.
 
 handle_cast(set_safe, _State=[{mode, M}, {fan, F}, {compressor, C}, {compressor_safe, _CS}]) ->
-    debugger:format("[~p:~p] overriding wait timer; setting compressor_safety: 'safe'~n", [?MODULE, ?FUNCTION_NAME]),
+    debugger:format("[~p:~p] overriding wait timer; setting compressor_safety: 'safe'", [?MODULE, ?FUNCTION_NAME]),
     spawn(fun() -> led:flash(?COMPRESSOR_LED, 50, 8) end),
     {noreply, [{mode, M}, {fan, F}, {compressor, C}, {compressor_safe, safe}] };
 
@@ -83,7 +83,7 @@ handle_call({set_fan, FanNew}, _From, _State=[{mode, Mode}, {fan, F}, {compresso
     {reply, ok, [{mode, Mode}, {fan, F}, {compressor, C}, {compressor_safe, CS}] };
 
 handle_call(Msg, _From, State) ->
-    debugger:format("[~p] Received unknown ~p message: ~p~n", [?MODULE, ?FUNCTION_NAME, Msg]),
+    debugger:format("[~p] Received unknown ~p message: ~p", [?MODULE, ?FUNCTION_NAME, Msg]),
     {reply, ok, State}.
 
 
@@ -91,22 +91,22 @@ handle_info(start, State) ->
     % Start first compressor safety timer
     erlang:send(?MODULE, operation_loop),
     %[{mode, M}, {fan, F}, {compressor, C}, {compressor_safe, CS}] = State,
-    %debugger:format("[control] handle_info start: State=[mode:~p f:~p comp:~p cs:~p].~n", [M, F, C, CS]),
-    debugger:format("[~p:~p]start Setting initial safety delay of ~p seconds...~n", [?MODULE, ?FUNCTION_NAME, trunc(?SAFETY_DELAY / 1000)]),
+    %debugger:format("[control] handle_info start: State=[mode:~p f:~p comp:~p cs:~p].", [M, F, C, CS]),
+    debugger:format("[~p:~p]start Setting initial safety delay of ~p seconds...", [?MODULE, ?FUNCTION_NAME, trunc(?SAFETY_DELAY / 1000)]),
     fan(0), %just in case we crashed and fan is still on.
     compressor_set(off), %just in case we crashed and compressor is still on.
     erlang:send_after(?SAFETY_DELAY, ?MODULE, {compressor_safety, safe}), %mark safe after the delay has elapsed
     {noreply, State};
 
 handle_info({compressor_safety, CSafe}, _State=[{mode, M}, {fan, F}, {compressor, C}, {compressor_safe, _CS}]) ->
-    debugger:format("[~p:~p] setting compressor_safety to: ~p~n", [?MODULE, ?FUNCTION_NAME, CSafe]),
-    %io:format("[control] handle_info compressorsafety:~p. State=[mode:~p f:~p comp:~p cs:~p].~n", [CSafe, M, F, C, _CS]),
-    %io:format("[control] handle_info compressorsafety NewState=[mode:~p f:~p comp:~p cs:~p].~n", [M, F, C, CSafe]),
+    debugger:format("[~p:~p] setting compressor_safety to: ~p", [?MODULE, ?FUNCTION_NAME, CSafe]),
+    %io:format("[control] handle_info compressorsafety:~p. State=[mode:~p f:~p comp:~p cs:~p].", [CSafe, M, F, C, _CS]),
+    %io:format("[control] handle_info compressorsafety NewState=[mode:~p f:~p comp:~p cs:~p].", [M, F, C, CSafe]),
     {noreply, [{mode, M}, {fan, F}, {compressor, C}, {compressor_safe, CSafe}] };
 
 %%% MODE SELECTION  off|cool|energy_saver|fan_only
 handle_info({set_mode, Mode}, _State=[{mode, M}, {fan, F}, {compressor, C}, {compressor_safe, CS}]) ->
-    debugger:format("[~p:~p] changing mode from ~p to new setting: ~p~n", [?MODULE, ?FUNCTION_NAME, M, Mode]),
+    debugger:format("[~p:~p] changing mode from ~p to new setting: ~p", [?MODULE, ?FUNCTION_NAME, M, Mode]),
     {Comp, CSafe} = case Mode of
         off ->
            fan(0),
@@ -162,7 +162,7 @@ handle_info({set_fan, FanNew}, _State=[{mode, Mode}, {fan, FanPrev}, {compressor
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %compressor not safe (wait)
 handle_info(operation_loop, State=[{mode, Mode}, {fan, F}, {compressor, C}, {compressor_safe, wait}]) ->
-    debugger:format("[~p:~p] operation_loop State=[mode:~p f:~p comp:~p cs:wait].~n", [?MODULE, ?FUNCTION_NAME, Mode, F, C]),
+    debugger:format("[~p:~p] operation_loop State=[mode:~p f:~p comp:~p cs:wait].", [?MODULE, ?FUNCTION_NAME, Mode, F, C]),
     case C of
         on -> compressor_set(off); %this should never happen, but if it does, we want the log message
         _ -> compressor_set_outputs(off) %silently make sure compressor is off
@@ -170,7 +170,7 @@ handle_info(operation_loop, State=[{mode, Mode}, {fan, F}, {compressor, C}, {com
     case Mode of %allow fan to run even if compressor is in 'wait' stage
         cool -> fan(F);
         energy_saver ->
-            debugger:format("[~p] Turning fan off since we are in energy_saver mode and compressor is off...~n", [?MODULE]),
+            debugger:format("[~p] Turning fan off since we are in energy_saver mode and compressor is off...", [?MODULE]),
             fan(0);
         fan_only -> fan_on(F);
         _ -> ok
@@ -208,7 +208,7 @@ handle_info(operation_loop, [{mode, Mode}, {fan, F}, {compressor, off}, {compres
         true -> off
     end,
     State = [{mode, Mode}, {fan, F}, {compressor, Comp}, {compressor_safe, safe}],
-    debugger:format("[~p:~p] operation_loop State=[mode:~p f:~p comp:~p cs:~p].~n", [?MODULE, ?FUNCTION_NAME, Mode, F, Comp, safe]),
+    debugger:format("[~p:~p] operation_loop State=[mode:~p f:~p comp:~p cs:~p].", [?MODULE, ?FUNCTION_NAME, Mode, F, Comp, safe]),
     notify(?TOPIC_STATUS, status_binary(State)),
     erlang:send_after(20000, ?MODULE, operation_loop),
     {noreply, State};
@@ -228,7 +228,7 @@ handle_info(operation_loop, [{mode, Mode}, {fan, F}, {compressor, on}, {compress
             erlang:send_after(?SAFETY_DELAY, ?MODULE, {compressor_safety, safe}),
             Msg = io_lib:format("COMPRESSOR FREEZE STOP! Coil temperature is: ~.1f", [CoilTemp]),
             spawn(fun() -> util:beep(880, 1000), util:beep(440, 1000), util:beep(880, 1000), util:beep(880, 1000) end),
-            debugger:format("~p~n", [Msg]),
+            debugger:format("~p", [Msg]),
             {off, wait, Msg};
         %Temp =< (TSet - HalfSpan) -> %normal temp low compressor shutoff
         TempIsLow -> %normal temp low compressor shutoff
@@ -240,8 +240,8 @@ handle_info(operation_loop, [{mode, Mode}, {fan, F}, {compressor, on}, {compress
             {on, safe, "ok"}
     end,
     State = [{mode, Mode}, {fan, F}, {compressor, Comp}, {compressor_safe, CS}],
-    %debugger:format("[~p] ~p operation_loop T=~.2f, CT=~.2f, TS=~p, S=~.1f, State=[mode:~p f:~p comp:~p cs:~p].~n", [?MODULE, ?FUNCTION_NAME, Temp, CoilTemp,TSet, Span, Mode, F, on, safe]),
-    debugger:format("[~p:~p] operation_loop State=[mode:~p f:~p comp:~p cs:~p].~n", [?MODULE, ?FUNCTION_NAME, Mode, F, Comp, CS]),
+    %debugger:format("[~p] ~p operation_loop T=~.2f, CT=~.2f, TS=~p, S=~.1f, State=[mode:~p f:~p comp:~p cs:~p].", [?MODULE, ?FUNCTION_NAME, Temp, CoilTemp,TSet, Span, Mode, F, on, safe]),
+    debugger:format("[~p:~p] operation_loop State=[mode:~p f:~p comp:~p cs:~p].", [?MODULE, ?FUNCTION_NAME, Mode, F, Comp, CS]),
     notify(?TOPIC_STATUS, status_binary(State, StatusMsg)),
     erlang:send_after(20000, ?MODULE, operation_loop),
     {noreply, State}.
@@ -330,7 +330,7 @@ cutoff_check(Temp, TSet, Span) ->
         true -> TSet - HalfSpan;
         _ -> TSet - LargePartOfSpan
     end,
-    debugger:format("[~p:~p] Cutoff Temps: [highpoint: ~.2f lowpoint: ~.2f]~n", [?MODULE, ?FUNCTION_NAME, HighPoint, LowPoint]),
+    debugger:format("[~p:~p] Cutoff Temps: [highpoint: ~.2f lowpoint: ~.2f]", [?MODULE, ?FUNCTION_NAME, HighPoint, LowPoint]),
     {Temp >= HighPoint, Temp =< LowPoint}.
 
 
@@ -345,7 +345,7 @@ all_off() ->
     fan(0).
 
 compressor_set(C) ->
-    debugger:format("[~p] ~p: TURNING ~p COMPRESSOR.~n", [?MODULE, ?FUNCTION_NAME, C]),
+    debugger:format("[~p] ~p: TURNING ~p COMPRESSOR.", [?MODULE, ?FUNCTION_NAME, C]),
     compressor_set_outputs(C).
 
 compressor_set_outputs(C) ->
@@ -360,7 +360,7 @@ fan_on(F) ->
     end.
 
 fan(F) ->
-    debugger:format("Setting fan to ~p.~n", [F]),
+    debugger:format("Setting fan to ~p.", [F]),
     case util:make_int(F) of
         0 ->
             util:set_output(?FAN1, off),
@@ -390,7 +390,7 @@ fan(F) ->
 
 notify(Topic, Msg) ->
     case whereis(mqtt_client) of
-        undefined -> io:format("MQTT is not alive; message: ~p~n", [Msg]);
+        undefined -> io:format("MQTT is not alive; message: ~p", [Msg]);
         %_Pid -> spawn( fun() -> mqtt:pub(Topic, Msg) end) % this notify/2 is called from handle_call/handle_info, so need to return quickly.
         _Pid -> mqtt:publish_and_forget(Topic, Msg) % this notify/2 is called from handle_call/handle_info, so need to return quickly.
     end.

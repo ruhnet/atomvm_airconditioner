@@ -15,12 +15,12 @@
 -include("app.hrl").
 
 start_link() ->
-    io:format("Starting '~p' with ~p/~p...~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
+    debugger:format("Starting '~p' with ~p/~p...", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY]),
     {ok, _Pid} = gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
     %{ok, _Pid} = init([]).
 
 init(_) ->
-    io:format("Starting '~p' with ~p/~p...~n", [mqtt_client, start_link, 1]),
+    debugger:format("Starting '~p' with ~p/~p...", [mqtt_client, start_link, 1]),
     %{ok, {no_mqtt_pid, not_ready}}.
     My_Pid = self(),
     {ok, {My_Pid, not_ready}}.
@@ -31,15 +31,15 @@ start_mqtt_client() ->
     MQTTConfig = #{
         url => maps:get(url, Config),
         client_id => ?DEVICENAME,
-        disconnected_handler => fun(_MQTT_CLIENT_PID) -> io:format("DISCONNECTED from MQTT!!!!!!~n"), mqtt_client:reconnect(whereis(mqtt_client)) end,
-        error_handler => fun(_MQTT_CLIENT_PID, Err) -> io:format("[~p:~p] ~p~n", [?MODULE, ?FUNCTION_NAME, Err]) end,
+        disconnected_handler => fun(_MQTT_CLIENT_PID) -> io:format("DISCONNECTED from MQTT!!!!!!\n"), mqtt_client:reconnect(whereis(mqtt_client)) end,
+        error_handler => fun(_MQTT_CLIENT_PID, Err) -> io:format("[~p:~p] ~p\n", [?MODULE, ?FUNCTION_NAME, Err]) end,
         connected_handler => fun handle_connected/1
     },
-    io:format("Starting 'mqtt_client'...~n"),
+    io:format("Starting 'mqtt_client'..."),
     {ok, _MQTT_PID} = mqtt_client:start_link({local, mqtt_client}, MQTTConfig).
 
 handle_call(start_client, _From, {_, _ReadyStatus}) ->
-    io:format("MQTT Controller received 'start_client' message from 'wifi' after obtaining IP address; starting 'mqtt_client'...~n"),
+    debugger:format("MQTT Controller received 'start_client' message from 'wifi' after obtaining IP address; starting 'mqtt_client'...\n"),
     {ok, MQTT_PID} = start_mqtt_client(),
     {reply, ok, {MQTT_PID, not_ready}};
 handle_call({ready, MQTT_PID}, _From, {_, _ReadyStatus}) ->
@@ -61,7 +61,7 @@ handle_call(get_pid, _From, State={MQTT_PID, _ReadyStatus}) ->
 handle_call(get, _From, State={_MQTT_PID, _ReadyStatus}) ->
     {reply, State, State};
 handle_call(Msg, From, State) ->
-    io:format("MQTT Controller received unknown message ~p from ~p~n", [Msg, From]),
+    io:format("MQTT Controller received unknown message ~p from ~p\n", [Msg, From]),
     {reply, ok, State}.
 
 handle_cast({publish, Topic, Message}, State={_MQTT_PID, ReadyStatus}) -> %Fire-and-forget publish with no response
@@ -78,24 +78,24 @@ terminate(_Reason, _State) ->
 
 
 ac_on() ->
-    io:format("Turning on AC.~n", []),
+    io:format("Turning on AC.\n", []),
     util:set_output(?FAN3, on),
     util:set_output(?COMPRESSOR, on),
     util:set_output(?STATUS_LED, on),
     publish_message(?TOPIC_AC, <<"AC ON">>).
 
 compressor_off() ->
-    io:format("Turning off compressor.~n", []),
+    io:format("Turning off compressor.\n", []),
     util:set_output(?COMPRESSOR, off),
     publish_message(?TOPIC_AC, <<"COMPRESSOR OFF">>).
 
 compressor_on() ->
-    io:format("FORCE Turning ON compressor.~n", []),
+    io:format("FORCE Turning ON compressor.\n", []),
     util:set_output(?COMPRESSOR, on),
     publish_message(?TOPIC_AC, <<"COMPRESSOR OFF">>).
 
 all_off() ->
-    io:format("Turning off compressor.~n", []),
+    io:format("Turning off compressor.\n", []),
     util:set_output(?FAN3, off),
     util:set_output(?FAN2, off),
     util:set_output(?FAN1, off),
@@ -115,14 +115,14 @@ publish_and_forget(Topic, Message) ->
 
 handle_connected(MQTT) ->
     Config = mqtt_client:get_config(MQTT),
-    debugger:format("[~p:~p] MQTT started and connected to ~p~n", [?MODULE, ?FUNCTION_NAME, maps:get(url, Config)]),
+    debugger:format("[~p:~p] MQTT started and connected to ~p", [?MODULE, ?FUNCTION_NAME, maps:get(url, Config)]),
     gen_server:call(mqtt, {ready, MQTT}),
     subscribe_to_topic_list(MQTT, get_topics()),
     publish_message(?TOPIC_DEBUG, util:uptime()),
     publish_message(?TOPIC_DEBUG, io_lib:format("[~p] '~p' running on [~p] started and connected!", [?MODULE, ?APPNAME, ?DEVICENAME])).
 
 subscribe_to_topic(MQTT, Topic, SubHandleFunc, DataHandleFunc) ->
-    debugger:format("Subscribing to ~p...~n", [Topic]),
+    debugger:format("Subscribing to ~p...", [Topic]),
     case mqtt_client:subscribe(MQTT, util:convert_to_binary(Topic), #{
         %subscribed_handler => fun handle_subscribed/2,
         %data_handler => fun handle_data/3
@@ -130,7 +130,7 @@ subscribe_to_topic(MQTT, Topic, SubHandleFunc, DataHandleFunc) ->
         data_handler => DataHandleFunc
     }) of
         ok -> ok;
-        _ -> io:format("MQTT Subscribe Failed! KILLING MQTT CLIENT ~p. My PID: ~p~n", [MQTT, self()]),
+        _ -> io:format("MQTT Subscribe Failed! KILLING MQTT CLIENT ~p. My PID: ~p", [MQTT, self()]),
              exit(MQTT)
     end.
 
@@ -139,7 +139,7 @@ subscribe_to_topic_list(MQTT, Topics) ->
         [{Topic, SubHandleFunc, DataHandleFunc}|Remaining] ->
             subscribe_to_topic(MQTT, Topic, SubHandleFunc, DataHandleFunc),
             subscribe_to_topic_list(MQTT, Remaining);
-        _ -> debugger:format("Done subscribing to MQTT topics.~n")
+        _ -> debugger:format("Done subscribing to MQTT topics.")
     end.
 
 get_topics() ->
@@ -151,12 +151,12 @@ get_topics() ->
     ].
 
 handle_subscribed(_MQTT, Topic) ->
-    debugger:format("Subscribed to topic: ~p.~n", [Topic]).
+    debugger:format("Subscribed to topic: ~p.", [Topic]).
 
 unsubscribe(Topic) ->
     {MQTT_PID, _ReadyStatus} = gen_server:call(?MODULE, get),
-    UnsubHandlerFunc = fun(_MQTT, UnsubTopic) -> debugger:format("Unsubscribed from topic feed: ~p ~n", [UnsubTopic]) end,
-    debugger:format("[mqtt:unsubscribe] Running mqtt:unsubscribe in mqtt.erl to mqtt_client ~p on topic: ~p~n",[MQTT_PID, Topic]),
+    UnsubHandlerFunc = fun(_MQTT, UnsubTopic) -> debugger:format("Unsubscribed from topic feed: ~p ", [UnsubTopic]) end,
+    debugger:format("[mqtt:unsubscribe] Running mqtt:unsubscribe in mqtt.erl to mqtt_client ~p on topic: ~p",[MQTT_PID, Topic]),
     mqtt_client:unsubscribe(MQTT_PID, util:convert_to_binary(Topic), #{unsubscribed_handler => UnsubHandlerFunc}).
 
 subscribe_remote_temp(Topic) ->
@@ -167,16 +167,16 @@ subscribe_remote_temp(Topic) ->
     end.
 
 handle_data_remote_temp(_MQTT, Topic, Data) ->
-    debugger:format("[~p:~p/~p] remote temperature [~p] received from ~p~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, Data, Topic]),
+    debugger:format("[~p:~p/~p] remote temperature [~p] received from ~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, Data, Topic]),
     temperature:set_remote_temperature(Data).
 
 handle_subscribed_thermostat(_MQTT, Topic) ->
-    debugger:format("Subscribed to topic: ~p.~n", [Topic]), %,
-    debugger:format("Spawning thermostat setpoint publish loop on topic ~p~n", [?TOPIC_THERMOSTAT_SET]),
+    debugger:format("Subscribed to topic: ~p.", [Topic]), %,
+    debugger:format("Spawning thermostat setpoint publish loop on topic ~p", [?TOPIC_THERMOSTAT_SET]),
     spawn(fun() -> publish_thermostat_loop(?THERMOSTAT_PUB_INTERVAL_SEC * 1000) end).
 
 handle_data(_MQTT, Topic, Data) ->
-    debugger:format("[~p:~p/~p] received data on topic ~p: ~p ~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, Topic, Data]),
+    debugger:format("[~p:~p/~p] received data on topic ~p: ~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, Topic, Data]),
     case Data of
         <<"flash">> -> spawn(fun() -> led:flash(?STATUS_LED, 100, 20) end);
         <<"flash2">> -> spawn(fun() -> led:flash(?STATUS_LED2, 300, 10) end);
@@ -241,17 +241,17 @@ handle_data(_MQTT, Topic, Data) ->
     end.
 
 handle_data_thermostat(_MQTT, Topic, Data) ->
-    debugger:format("[~p:~p/~p] received data on topic ~p: ~p ~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, Topic, Data]),
+    debugger:format("[~p:~p/~p] received data on topic ~p: ~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, Topic, Data]),
     case Data of
         <<"+">> -> thermostat:up();
         <<"up">> -> thermostat:up();
         <<"-">> -> thermostat:down();
         <<"down">> -> thermostat:down();
+        <<"span ", S/binary>> -> thermostat:set_span(S);
         <<"show">> ->
             Res = thermostat:get_thermostat(),
-            io:format("Thermostat: ~p~n", [Res]),
+            debugger:format("Thermostat: ~p", [Res]),
             publish_message(?TOPIC_THERMOSTAT_SET, Res);
-        <<"span ", S/binary>> -> thermostat:set_span(S);
         <<"save">> -> thermostat:save();
         <<"load">> -> thermostat:load();
         <<"default">> -> thermostat:default();
@@ -263,7 +263,7 @@ handle_data_thermostat(_MQTT, Topic, Data) ->
     end.
 
 handle_data_fan(_MQTT, Topic, Data) ->
-    debugger:format("[~p:~p/~p] received data on topic ~p: ~p ~n", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, Topic, Data]),
+    debugger:format("[~p:~p/~p] received data on topic ~p: ~p", [?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, Topic, Data]),
     case Data of
         <<"cycle">> -> control:cycle_fan();
         <<"1">> -> control:set_fan(1);
@@ -273,7 +273,7 @@ handle_data_fan(_MQTT, Topic, Data) ->
     end.
 
 handle_data_output(_MQTT, Topic, Data) ->
-    debugger:format("~p/~p received data on topic ~p: ~p ~n", [?FUNCTION_NAME, ?FUNCTION_ARITY, Topic, Data]),
+    debugger:format("~p/~p received data on topic ~p: ~p", [?FUNCTION_NAME, ?FUNCTION_ARITY, Topic, Data]),
     %binary:last gives the last byte of a binary as an integer (ASCII value in this case). Subtract 48 to get the output number. :)
     Output = binary:last(Topic)-48,
     %OutputBin = list_to_binary([Output+48]),
@@ -302,7 +302,7 @@ publish_message(Topic, QoS, Data) ->
 
 publish_message(Topic, QoS, Data, Timeout) ->
     try
-        %io:format("Publishing data '~p' to topic ~p and mqtt_client pid ~p from my Pid ~p mqtt pid:~p ~n", [Data, Topic, whereis(mqtt_client), Self, whereis(mqtt)]),
+        %io:format("Publishing data '~p' to topic ~p and mqtt_client pid ~p from my Pid ~p mqtt pid:~p", [Data, Topic, whereis(mqtt_client), Self, whereis(mqtt)]),
         io:format("MQTT Publishing '~p' to topic ~p~n", [Data, Topic]),
         MQTT_CLIENT = whereis(mqtt_client),
         Self = self(),

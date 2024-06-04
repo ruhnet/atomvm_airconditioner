@@ -50,13 +50,13 @@ handle_cast(Msg, State={DebugType, _}) ->
 
 %handle_info(time, State) ->
 %    {{Year, Month, Day}, {Hour, Minute, Second}} = erlang:universaltime(),
-%    debugger:format("[DEBUG] Time: ~p/~2..0p/~2..0p ~2..0p:~2..0p:~2..0p ~n", [ Year, Month, Day, Hour, Minute, Second ]),
+%    debugger:format("[DEBUG] Time: ~p/~2..0p/~2..0p ~2..0p:~2..0p:~2..0p", [ Year, Month, Day, Hour, Minute, Second ]),
 %    erlang:send_after(60000, self(), time),
 %    {noreply, State};
 handle_info(uptime, State) ->
     {_, {{Year, Month, Day}, {Hour, Minute, Second}}} = State,
-    debugger:format("BOOT TIME: ~p/~2..0p/~2..0p ~2..0p:~2..0p:~2..0p ~n", [ Year, Month, Day, Hour, Minute, Second ]),
-    debugger:format("UPTIME: ~p minutes ~n",  [trunc(erlang:monotonic_time(second)/60)]),
+    debugger:format("BOOT TIME: ~p/~2..0p/~2..0p ~2..0p:~2..0p:~2..0p", [ Year, Month, Day, Hour, Minute, Second ]),
+    debugger:format("UPTIME: ~p minutes ",  [trunc(erlang:monotonic_time(second)/60)]),
     %erlang:send_after(900000, self(), uptime), %repeat every 15 minutes
     {noreply, State};
 handle_info(Msg, State) ->
@@ -69,7 +69,7 @@ terminate(_Reason, _State) ->
 select_output(Mode, Msg) ->
     case Mode of
         console_only ->
-            %io:format("[DEBUG]: ~p~n", [Msg]);
+            %io:format("[DEBUG]: ~p\n", [Msg]);
             io:format(Msg),
             io:format("\n");
         mqtt_only ->
